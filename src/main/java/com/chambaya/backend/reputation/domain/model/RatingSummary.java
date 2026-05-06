@@ -8,5 +8,5 @@ import lombok.Getter;
 public class RatingSummary {
     private String userId;
     private double averageRating;
-    private int totalRatings;
+    private int totalReviews;
 }
