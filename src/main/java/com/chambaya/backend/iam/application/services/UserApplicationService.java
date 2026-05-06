@@ -5,6 +5,7 @@ import com.chambaya.backend.iam.application.commands.UpdateProfileCommand;
 import com.chambaya.backend.iam.domain.model.Profile;
 import com.chambaya.backend.iam.domain.model.User;
 import com.chambaya.backend.iam.domain.repositories.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.stereotype.Service;
 
@@ -16,9 +17,11 @@ import java.util.Optional;
 public class UserApplicationService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserApplicationService(UserRepository userRepository) {
+    public UserApplicationService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public User createUser(CreateUserCommand command){
@@ -35,11 +38,14 @@ public class UserApplicationService {
                 false
 
         );
+
+        String passwordHash = passwordEncoder.encode(command.password());
+
         User user = new User(
                 null,
                 command.name(),
                 command.email(),
-                command.password(),
+                passwordHash,
                 command.role(),
                 profile,
                 LocalDateTime.now(),
