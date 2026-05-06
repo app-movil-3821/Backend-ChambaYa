@@ -6,10 +6,13 @@ import com.chambaya.backend.iam.domain.model.Profile;
 import com.chambaya.backend.iam.domain.model.User;
 import com.chambaya.backend.iam.domain.repositories.UserRepository;
 
+import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+@Service
 public class UserApplicationService {
 
     private final UserRepository userRepository;
