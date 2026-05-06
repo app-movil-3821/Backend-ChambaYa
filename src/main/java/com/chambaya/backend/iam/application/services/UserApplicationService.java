@@ -65,13 +65,13 @@ public class UserApplicationService {
         return userRepository.save(user);
     }
 
-    public Optional<User> getUserById(String id) {
+    public Optional<User> findById(String id) {
         return userRepository.findById(id);
     }
-    public Optional<User> getUserByEmail(String email) {
+    public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
-    public List<User> getAllUsers() {
+    public List<User> findAll() {
         return userRepository.findAll();
     }
 
