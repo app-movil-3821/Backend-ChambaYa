@@ -48,6 +48,8 @@ public class EnrollmentApplicationService {
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.accept();
         jobApplicationService.matchJob(enrollment.getJobId());
+        Enrollment acceptedEnrollment = enrollmentRepository.save(enrollment);
+        rejectOtherPendingEnrollments(acceptedEnrollment);
         return enrollmentRepository.save(enrollment);
     }
 
@@ -62,6 +64,16 @@ public class EnrollmentApplicationService {
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.cancel();
         return enrollmentRepository.save(enrollment);
+    }
+    private void rejectOtherPendingEnrollments(Enrollment acceptedEnrollment){
+        List<Enrollment> enrollments = enrollmentRepository.findByJobId(acceptedEnrollment.getJobId());
+        enrollments.stream()
+                .filter(enrollment -> !enrollment.getId().equals(acceptedEnrollment.getId()))
+                .filter(enrollment -> enrollment.getStatus() == EnrollmentStatus.PENDING)
+                .forEach(enrollment -> {
+                    enrollment.reject();
+                    enrollmentRepository.save(enrollment);
+                });
     }
 
     public Optional<Enrollment> findById(String id){
