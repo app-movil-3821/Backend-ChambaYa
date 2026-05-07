@@ -7,6 +7,7 @@ import com.chambaya.backend.enrollments.application.commands.RejectEnrollmentCom
 import com.chambaya.backend.enrollments.domain.model.Enrollment;
 import com.chambaya.backend.enrollments.domain.model.EnrollmentStatus;
 import com.chambaya.backend.enrollments.domain.repositories.EnrollmentRepository;
+import com.chambaya.backend.jobs.application.services.JobApplicationService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,8 +17,13 @@ import java.util.Optional;
 public class EnrollmentApplicationService {
 
     private final EnrollmentRepository enrollmentRepository;
-    public EnrollmentApplicationService(EnrollmentRepository enrollmentRepository) {
+    private final JobApplicationService jobApplicationService;
+    public EnrollmentApplicationService(
+            EnrollmentRepository enrollmentRepository,
+            JobApplicationService jobApplicationService
+    ) {
         this.enrollmentRepository = enrollmentRepository;
+        this.jobApplicationService = jobApplicationService;
     }
 
     public Enrollment applyToJob(ApplyToJobCommand command){
@@ -41,6 +47,7 @@ public class EnrollmentApplicationService {
         Enrollment enrollment = enrollmentRepository.findById(command.enrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.accept();
+        jobApplicationService.matchJob(enrollment.getJobId());
         return enrollmentRepository.save(enrollment);
     }
 

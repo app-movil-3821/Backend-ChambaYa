@@ -67,6 +67,13 @@ public class JobApplicationService {
         return jobRepository.save(job);
     }
 
+    public Job matchJob(String id){
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        job.match();
+        return jobRepository.save(job);
+    }
+
     public Optional<Job> findById(String id){
         return jobRepository.findById(id);
     }
