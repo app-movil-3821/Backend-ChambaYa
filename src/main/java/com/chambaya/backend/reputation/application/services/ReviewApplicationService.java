@@ -4,6 +4,8 @@ import com.chambaya.backend.reputation.application.commands.CreateReviewCommand;
 import com.chambaya.backend.reputation.domain.model.RatingSummary;
 import com.chambaya.backend.reputation.domain.model.Review;
 import com.chambaya.backend.reputation.domain.repositories.ReviewRepository;
+import com.chambaya.backend.jobs.application.services.JobApplicationService;
+import com.chambaya.backend.iam.application.services.UserApplicationService;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -12,11 +14,24 @@ import java.util.Optional;
 @Service
 public class ReviewApplicationService {
     private final ReviewRepository reviewRepository;
-    public ReviewApplicationService(ReviewRepository reviewRepository) {
+    private final JobApplicationService jobApplicationService;
+    private final UserApplicationService userApplicationService;
+    public ReviewApplicationService(
+            ReviewRepository reviewRepository,
+            UserApplicationService userApplicationService,
+            JobApplicationService jobApplicationService
+    ) {
         this.reviewRepository = reviewRepository;
+        this.userApplicationService = userApplicationService;
+        this.jobApplicationService = jobApplicationService;
     }
 
     public Review createReview(CreateReviewCommand command){
+        validateJobExists(command.jobId());
+        validateReviewerExists(command.reviewerId());
+        validateReviewedUserExists(command.reviewedUserId());
+        validateDifferentUser(command.reviewerId(), command.reviewedUserId());
+
         if (reviewRepository.existsByJobIdAndReviewerIdAndReviewedUserId(
                 command.jobId(),
                 command.reviewerId(),
@@ -63,5 +78,22 @@ public class ReviewApplicationService {
         return new RatingSummary(userId, average, reviews.size());
     }
 
+    private void validateJobExists(String jobId){
+        jobApplicationService.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+    }
+    private void validateReviewerExists(String reviewerId){
+        userApplicationService.findById(reviewerId)
+                .orElseThrow(() -> new IllegalArgumentException("Reviewer not found"));
+    }
+    private void validateReviewedUserExists(String reviewedUserId){
+        userApplicationService.findById(reviewedUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Reviewed user not found"));
+    }
+    private void validateDifferentUser(String reviewerId, String reviewedUserId){
+        if (reviewerId.equals(reviewedUserId)) {
+            throw new IllegalArgumentException("Reviewer and reviewed user cannot be the same");
+        }
+    }
 
 }
