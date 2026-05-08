@@ -6,6 +6,9 @@ import com.chambaya.backend.jobs.domain.model.Job;
 import com.chambaya.backend.jobs.domain.model.JobStatus;
 import com.chambaya.backend.jobs.domain.model.Location;
 import com.chambaya.backend.jobs.domain.repositories.JobRepository;
+import com.chambaya.backend.iam.application.services.UserApplicationService;
+import com.chambaya.backend.iam.domain.model.User;
+import com.chambaya.backend.iam.domain.model.UserRole;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,11 +17,18 @@ import java.util.Optional;
 public class JobApplicationService {
 
     private final JobRepository jobRepository;
-    public JobApplicationService(JobRepository jobRepository) {
+    private final UserApplicationService userApplicationService;
+    public JobApplicationService(
+            JobRepository jobRepository,
+            UserApplicationService userApplicationService
+    ) {
         this.jobRepository = jobRepository;
+        this.userApplicationService = userApplicationService;
     }
 
     public Job createJob(CreateJobCommand command){
+        validateContractor(command.contractorId());
+
         Location location = new Location(
                 command.latitude(),
                 command.longitude(),
@@ -67,11 +77,19 @@ public class JobApplicationService {
         return jobRepository.save(job);
     }
 
-    public Job matchJob(String id){
+    public void matchJob(String id){
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
         job.match();
-        return jobRepository.save(job);
+        jobRepository.save(job);
+    }
+
+    private void validateContractor(String contractorId){
+        User contractor = userApplicationService.findById(contractorId)
+                .orElseThrow(() -> new IllegalArgumentException("Contractor not found"));
+        if (contractor.getRole() != UserRole.CONTRATANTE) {
+            throw new IllegalArgumentException("User is not a contractor");
+        }
     }
 
     public Optional<Job> findById(String id){
