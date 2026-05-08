@@ -7,7 +7,11 @@ import com.chambaya.backend.enrollments.application.commands.RejectEnrollmentCom
 import com.chambaya.backend.enrollments.domain.model.Enrollment;
 import com.chambaya.backend.enrollments.domain.model.EnrollmentStatus;
 import com.chambaya.backend.enrollments.domain.repositories.EnrollmentRepository;
+import com.chambaya.backend.iam.application.services.UserApplicationService;
 import com.chambaya.backend.jobs.application.services.JobApplicationService;
+import com.chambaya.backend.iam.domain.model.User;
+import com.chambaya.backend.iam.domain.model.UserRole;
+import com.chambaya.backend.jobs.domain.model.Job;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -18,15 +22,24 @@ public class EnrollmentApplicationService {
 
     private final EnrollmentRepository enrollmentRepository;
     private final JobApplicationService jobApplicationService;
+    private final UserApplicationService userApplicationService;
     public EnrollmentApplicationService(
             EnrollmentRepository enrollmentRepository,
-            JobApplicationService jobApplicationService
+            JobApplicationService jobApplicationService,
+            UserApplicationService userApplicationService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.jobApplicationService = jobApplicationService;
+        this.userApplicationService = userApplicationService;
     }
 
     public Enrollment applyToJob(ApplyToJobCommand command){
+        Job job = jobApplicationService.findById(command.jobId())
+                .orElseThrow(() -> new IllegalArgumentException("Job not found."));
+        validateWorker(command.workerId());
+        validateContractor(command.contractorId());
+        validateContractorOwnsJob(job, command.contractorId());
+
         if (enrollmentRepository.existsByJobIdAndWorkerId(command.jobId(), command.workerId())) {
             throw new IllegalArgumentException("Worker has already applied to this job.");
         }
@@ -74,6 +87,25 @@ public class EnrollmentApplicationService {
                     enrollment.reject();
                     enrollmentRepository.save(enrollment);
                 });
+    }
+    private void validateWorker(String workerId){
+        User worker = userApplicationService.findById(workerId)
+                .orElseThrow(() -> new IllegalArgumentException("Worker not found."));
+        if (worker.getRole() != UserRole.CHAMBEADOR) {
+            throw new IllegalArgumentException("User is not a worker.");
+        }
+    }
+    private void validateContractor(String contractorId){
+        User contractor = userApplicationService.findById(contractorId)
+                .orElseThrow(() -> new IllegalArgumentException("Contractor not found."));
+        if (contractor.getRole() != UserRole.CONTRATANTE) {
+            throw new IllegalArgumentException("User is not a contractor.");
+        }
+    }
+    private void validateContractorOwnsJob(Job job, String contractorId){
+        if (!job.getContractorId().equals(contractorId)) {
+            throw new IllegalArgumentException("Contractor does not own this job.");
+        }
     }
 
     public Optional<Enrollment> findById(String id){
