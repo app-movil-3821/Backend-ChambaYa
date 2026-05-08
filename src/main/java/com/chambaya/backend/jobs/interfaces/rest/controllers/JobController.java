@@ -38,6 +38,17 @@ public class JobController {
                 .map(JobResourceAssembler::toResource)
                 .toList();
     }
+    @GetMapping("/nearby")
+    public List<JobResource> getNearbyJobs(
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @RequestParam double radiusKm
+    ){
+        return jobApplicationService.findNearbyAvailableJobs(latitude,longitude,radiusKm)
+                .stream()
+                .map(JobResourceAssembler::toResource)
+                .toList();
+    }
     @GetMapping("/{id}")
     public JobResource getJobById(@PathVariable String id){
         Job job = jobApplicationService.findById(id)

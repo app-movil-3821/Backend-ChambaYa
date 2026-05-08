@@ -92,6 +92,46 @@ public class JobApplicationService {
         }
     }
 
+    public List<Job> findNearbyAvailableJobs(double latitude, double longitude, double radiusKm){
+        if (radiusKm <= 0) {
+            throw new IllegalArgumentException("Radius must be greater than 0");
+        }
+        return jobRepository.findAll()
+                .stream()
+                .filter(job -> job.getStatus() == JobStatus.PUBLISHED || job.getStatus() == JobStatus.REOPENED)
+                .filter(job -> job.getLocation() != null)
+                .filter(job -> calculateDistanceInKm(
+                        latitude,
+                        longitude,
+                        job.getLocation().getLatitude(),
+                        job.getLocation().getLongitude()
+                )<= radiusKm)
+                .toList();
+    }
+    private double calculateDistanceInKm(
+            double originLatitude,
+            double originLongitude,
+            double destinationLatitude,
+            double destinationLongitude
+    ){
+        final int earthRadiusKm = 6371;
+        double latDistance = Math.toRadians(destinationLatitude - originLatitude);
+        double lonDistance = Math.toRadians(destinationLongitude - originLongitude);
+
+        double originLatitudeRadians = Math.toRadians(originLatitude);
+        double destinationLatitudeRadians = Math.toRadians(destinationLatitude);
+
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(originLatitudeRadians)
+                * Math.cos(destinationLatitudeRadians)
+                * Math.sin(lonDistance / 2)
+                * Math.sin(lonDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return earthRadiusKm * c;
+    }
+
     public Optional<Job> findById(String id){
         return jobRepository.findById(id);
     }
