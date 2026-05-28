@@ -1,5 +1,6 @@
 package com.chambaya.backend.shared.interfaces.rest.exceptions;
 
+import com.chambaya.backend.iam.domain.exceptions.InvalidCredentialsException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -84,6 +85,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Unexpected server error",
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentialsException(
+            InvalidCredentialsException exception,
+            HttpServletRequest request
+    ){
+        return buildErrorResponse(
+                HttpStatus.UNAUTHORIZED,
+                exception.getMessage(),
                 request.getRequestURI()
         );
     }
