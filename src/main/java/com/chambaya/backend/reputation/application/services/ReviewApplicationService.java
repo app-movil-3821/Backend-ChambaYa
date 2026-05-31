@@ -6,6 +6,8 @@ import com.chambaya.backend.reputation.domain.model.Review;
 import com.chambaya.backend.reputation.domain.repositories.ReviewRepository;
 import com.chambaya.backend.jobs.application.services.JobApplicationService;
 import com.chambaya.backend.iam.application.services.UserApplicationService;
+import com.chambaya.backend.jobs.domain.model.Job;
+import com.chambaya.backend.jobs.domain.model.JobStatus;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,7 +29,7 @@ public class ReviewApplicationService {
     }
 
     public Review createReview(CreateReviewCommand command){
-        validateJobExists(command.jobId());
+        validateJobIsCompleted(command.jobId());
         validateReviewerExists(command.reviewerId());
         validateReviewedUserExists(command.reviewedUserId());
         validateDifferentUser(command.reviewerId(), command.reviewedUserId());
@@ -78,9 +80,12 @@ public class ReviewApplicationService {
         return new RatingSummary(userId, average, reviews.size());
     }
 
-    private void validateJobExists(String jobId){
-        jobApplicationService.findById(jobId)
+    private void validateJobIsCompleted(String jobId){
+        Job job = jobApplicationService.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        if (job.getStatus() != JobStatus.COMPLETED) {
+            throw new IllegalArgumentException("Reviews can only be created for completed jobs");
+        }
     }
     private void validateReviewerExists(String reviewerId){
         userApplicationService.findById(reviewerId)
