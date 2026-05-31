@@ -62,17 +62,38 @@ public class JobApplicationService {
         return jobRepository.save(job);
     }
 
+    public Job startJob(String id){
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        job.start();
+        return jobRepository.save(job);
+    }
+
+    public Job completeJob(String id){
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        job.complete();
+        return jobRepository.save(job);
+    }
+
+    public Job cancelJob(String id){
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found"));
+        job.cancel();
+        return jobRepository.save(job);
+    }
+
     public Job closeJob(String id){
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
-        job.publish();
+        job.close();
 
         return jobRepository.save(job);
     }
     public Job reopenJob(String id){
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found"));
-        job.publish();
+        job.reopen();
 
         return jobRepository.save(job);
     }

@@ -40,12 +40,29 @@ public class Job {
     }
 
     public void start(){
+        if (this.status != JobStatus.MATCHED){
+            throw new IllegalStateException("Only matched jobs can be started.");
+        }
+
         this.status = JobStatus.IN_PROGRESS;
         this.updatedAt = LocalDateTime.now();
     }
 
     public void complete(){
+        if (this.status != JobStatus.IN_PROGRESS){
+            throw new IllegalStateException("Only in progress jobs can be completed.");
+        }
+
         this.status = JobStatus.COMPLETED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void cancel(){
+        if (this.status == JobStatus.COMPLETED){
+            throw new IllegalStateException("Completed jobs cannot be cancelled.");
+        }
+
+        this.status = JobStatus.CANCELLED;
         this.updatedAt = LocalDateTime.now();
     }
 

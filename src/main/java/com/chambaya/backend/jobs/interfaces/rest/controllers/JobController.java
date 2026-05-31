@@ -70,6 +70,24 @@ public class JobController {
                 .toList();
 
     }
+
+    @PutMapping("/{id}/start")
+    public JobResource startJob(@PathVariable String id){
+        Job job = jobApplicationService.startJob(id);
+        return JobResourceAssembler.toResource(job);
+    }
+
+    @PutMapping("/{id}/complete")
+    public JobResource completeJob(@PathVariable String id){
+        Job job = jobApplicationService.completeJob(id);
+        return JobResourceAssembler.toResource(job);
+    }
+    @PutMapping("/{id}/cancel")
+    public JobResource cancelJob(@PathVariable String id){
+        Job job = jobApplicationService.cancelJob(id);
+        return JobResourceAssembler.toResource(job);
+    }
+
     @PutMapping("/{id}/publish")
     public JobResource publishJob(@PathVariable String id){
         Job job = jobApplicationService.publishJob(id);
