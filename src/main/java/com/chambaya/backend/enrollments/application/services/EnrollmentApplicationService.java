@@ -4,6 +4,9 @@ import com.chambaya.backend.enrollments.application.commands.AcceptEnrollmentCom
 import com.chambaya.backend.enrollments.application.commands.ApplyToJobCommand;
 import com.chambaya.backend.enrollments.application.commands.CancelEnrollmentCommand;
 import com.chambaya.backend.enrollments.application.commands.RejectEnrollmentCommand;
+import com.chambaya.backend.notifications.application.commands.CreateNotificationCommand;
+import com.chambaya.backend.notifications.application.services.NotificationApplicationService;
+import com.chambaya.backend.notifications.domain.model.NotificationType;
 import com.chambaya.backend.enrollments.domain.model.Enrollment;
 import com.chambaya.backend.enrollments.domain.model.EnrollmentStatus;
 import com.chambaya.backend.enrollments.domain.repositories.EnrollmentRepository;
@@ -23,14 +26,17 @@ public class EnrollmentApplicationService {
     private final EnrollmentRepository enrollmentRepository;
     private final JobApplicationService jobApplicationService;
     private final UserApplicationService userApplicationService;
+    private final NotificationApplicationService notificationApplicationService;
     public EnrollmentApplicationService(
             EnrollmentRepository enrollmentRepository,
             JobApplicationService jobApplicationService,
-            UserApplicationService userApplicationService
+            UserApplicationService userApplicationService,
+            NotificationApplicationService notificationApplicationService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.jobApplicationService = jobApplicationService;
         this.userApplicationService = userApplicationService;
+        this.notificationApplicationService = notificationApplicationService;
     }
 
     public Enrollment applyToJob(ApplyToJobCommand command){
@@ -54,38 +60,61 @@ public class EnrollmentApplicationService {
                 null,
                 LocalDateTime.now()
         );
-        return enrollmentRepository.save(enrollment);
+        Enrollment savedEnrollment = enrollmentRepository.save(enrollment);
+
+        notifyEnrollmentReceived(savedEnrollment, job);
+
+        return savedEnrollment;
     }
     public Enrollment acceptEnrollment(AcceptEnrollmentCommand command){
         Enrollment enrollment = enrollmentRepository.findById(command.enrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.accept();
+
         jobApplicationService.matchJob(enrollment.getJobId());
+
         Enrollment acceptedEnrollment = enrollmentRepository.save(enrollment);
-        rejectOtherPendingEnrollments(acceptedEnrollment);
-        return enrollmentRepository.save(enrollment);
+        Job job = findJobById(acceptedEnrollment.getJobId());
+
+        notifyEnrollmentAccepted(acceptedEnrollment, job);
+        rejectOtherPendingEnrollments(acceptedEnrollment, job);
+
+        return acceptedEnrollment;
     }
 
     public Enrollment rejectEnrollment(RejectEnrollmentCommand command){
         Enrollment enrollment = enrollmentRepository.findById(command.enrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.reject();
-        return enrollmentRepository.save(enrollment);
+
+        Enrollment rejectedEnrollment = enrollmentRepository.save(enrollment);
+        Job job = findJobById(rejectedEnrollment.getJobId());
+
+        notifyEnrollmentRejected(rejectedEnrollment, job);
+
+        return rejectedEnrollment;
     }
     public Enrollment cancelEnrollment(CancelEnrollmentCommand command){
         Enrollment enrollment = enrollmentRepository.findById(command.enrollmentId())
                 .orElseThrow(() -> new IllegalArgumentException("Enrollment not found."));
         enrollment.cancel();
-        return enrollmentRepository.save(enrollment);
+
+        Enrollment cancelledEnrollment = enrollmentRepository.save(enrollment);
+        Job job = findJobById(cancelledEnrollment.getJobId());
+
+        notifyEnrollmentCancelled(cancelledEnrollment, job);
+
+        return cancelledEnrollment;
     }
-    private void rejectOtherPendingEnrollments(Enrollment acceptedEnrollment){
+    private void rejectOtherPendingEnrollments(Enrollment acceptedEnrollment, Job job){
         List<Enrollment> enrollments = enrollmentRepository.findByJobId(acceptedEnrollment.getJobId());
         enrollments.stream()
                 .filter(enrollment -> !enrollment.getId().equals(acceptedEnrollment.getId()))
                 .filter(enrollment -> enrollment.getStatus() == EnrollmentStatus.PENDING)
                 .forEach(enrollment -> {
                     enrollment.reject();
-                    enrollmentRepository.save(enrollment);
+                    Enrollment rejectedEnrollment = enrollmentRepository.save(enrollment);
+                    notifyEnrollmentRejected(rejectedEnrollment, job);
                 });
     }
     private void validateWorker(String workerId){
@@ -107,6 +136,57 @@ public class EnrollmentApplicationService {
             throw new IllegalArgumentException("Contractor does not own this job.");
         }
     }
+
+    private Job findJobById(String jobId) {
+        return jobApplicationService.findById(jobId)
+                .orElseThrow(() -> new IllegalArgumentException("Job not found."));
+    }
+
+    private void notifyEnrollmentReceived(Enrollment enrollment, Job job) {
+        notificationApplicationService.creatNotification(
+                new CreateNotificationCommand(
+                        enrollment.getContractorId(),
+                        "Nueva postulación",
+                        "Un chambeador postuló al trabajo: " + job.getTitle(),
+                        NotificationType.ENROLLMENT_RECEIVED
+                )
+        );
+    }
+
+    private void notifyEnrollmentAccepted(Enrollment enrollment, Job job) {
+        notificationApplicationService.creatNotification(
+                new CreateNotificationCommand(
+                        enrollment.getWorkerId(),
+                        "Postulación aceptada",
+                        "Tu postulación fue aceptada para el trabajo: " + job.getTitle(),
+                        NotificationType.ENROLLMENT_ACCEPTED
+                )
+        );
+    }
+
+    private void notifyEnrollmentRejected(Enrollment enrollment, Job job) {
+        notificationApplicationService.creatNotification(
+                new CreateNotificationCommand(
+                        enrollment.getWorkerId(),
+                        "Postulación rechazada",
+                        "Tu postulación fue rechazada para el trabajo: " + job.getTitle(),
+                        NotificationType.ENROLLMENT_REJECTED
+                )
+        );
+    }
+
+    private void notifyEnrollmentCancelled(Enrollment enrollment, Job job) {
+        notificationApplicationService.creatNotification(
+                new CreateNotificationCommand(
+                        enrollment.getContractorId(),
+                        "Postulación cancelada",
+                        "Un chambeador canceló su postulación al trabajo: " + job.getTitle(),
+                        NotificationType.ENROLLMENT_CANCELLED
+                )
+        );
+    }
+
+
 
     public Optional<Enrollment> findById(String id){
         return enrollmentRepository.findById(id);
