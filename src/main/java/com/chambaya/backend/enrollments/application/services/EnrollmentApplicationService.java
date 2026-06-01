@@ -6,6 +6,8 @@ import com.chambaya.backend.enrollments.application.commands.CancelEnrollmentCom
 import com.chambaya.backend.enrollments.application.commands.RejectEnrollmentCommand;
 import com.chambaya.backend.notifications.application.commands.CreateNotificationCommand;
 import com.chambaya.backend.notifications.application.services.NotificationApplicationService;
+import com.chambaya.backend.communication.application.commands.CreateConversationCommand;
+import com.chambaya.backend.communication.application.services.CommunicationApplicationService;
 import com.chambaya.backend.notifications.domain.model.NotificationType;
 import com.chambaya.backend.enrollments.domain.model.Enrollment;
 import com.chambaya.backend.enrollments.domain.model.EnrollmentStatus;
@@ -27,16 +29,20 @@ public class EnrollmentApplicationService {
     private final JobApplicationService jobApplicationService;
     private final UserApplicationService userApplicationService;
     private final NotificationApplicationService notificationApplicationService;
+
+    private final CommunicationApplicationService communicationApplicationService;
     public EnrollmentApplicationService(
             EnrollmentRepository enrollmentRepository,
             JobApplicationService jobApplicationService,
             UserApplicationService userApplicationService,
-            NotificationApplicationService notificationApplicationService
+            NotificationApplicationService notificationApplicationService,
+            CommunicationApplicationService communicationApplicationService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.jobApplicationService = jobApplicationService;
         this.userApplicationService = userApplicationService;
         this.notificationApplicationService = notificationApplicationService;
+        this.communicationApplicationService = communicationApplicationService;
     }
 
     public Enrollment applyToJob(ApplyToJobCommand command){
@@ -75,6 +81,8 @@ public class EnrollmentApplicationService {
 
         Enrollment acceptedEnrollment = enrollmentRepository.save(enrollment);
         Job job = findJobById(acceptedEnrollment.getJobId());
+
+        createConversationForAcceptedEnrollment(acceptedEnrollment, job);
 
         notifyEnrollmentAccepted(acceptedEnrollment, job);
         rejectOtherPendingEnrollments(acceptedEnrollment, job);
@@ -140,6 +148,17 @@ public class EnrollmentApplicationService {
     private Job findJobById(String jobId) {
         return jobApplicationService.findById(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Job not found."));
+    }
+
+    private void createConversationForAcceptedEnrollment(Enrollment enrollment, Job job) {
+        communicationApplicationService.createConversation(
+                new CreateConversationCommand(
+                        job.getId(),
+                        enrollment.getId(),
+                        enrollment.getContractorId(),
+                        enrollment.getWorkerId()
+                )
+        );
     }
 
     private void notifyEnrollmentReceived(Enrollment enrollment, Job job) {

@@ -44,6 +44,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/**").authenticated()
 
                         .requestMatchers(HttpMethod.PUT, "/api/v1/notifications/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/communications/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/communications/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
