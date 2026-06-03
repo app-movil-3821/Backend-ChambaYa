@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/notifications/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/communications/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/communications/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/**").hasRole("CONTRATANTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/payments/**").hasRole("CONTRATANTE")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
