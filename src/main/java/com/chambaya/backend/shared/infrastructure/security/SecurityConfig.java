@@ -48,6 +48,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/v1/communications/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/payments/**").hasRole("CONTRATANTE")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/payments/**").hasRole("CONTRATANTE")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/favorites/**").hasRole("CHAMBEADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/favorites/**").hasRole("CHAMBEADOR")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
