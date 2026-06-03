@@ -10,6 +10,8 @@ import com.chambaya.backend.iam.application.services.UserApplicationService;
 import com.chambaya.backend.iam.domain.model.User;
 import com.chambaya.backend.iam.domain.model.UserRole;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -113,10 +115,20 @@ public class JobApplicationService {
         }
     }
 
-    public List<Job> findNearbyAvailableJobs(double latitude, double longitude, double radiusKm){
+    public List<Job> findNearbyAvailableJobs(
+            double latitude,
+            double longitude,
+            double radiusKm,
+            String category,
+            String district,
+            BigDecimal minPayment,
+            BigDecimal maxPayment,
+            LocalDate scheduledDate
+    ) {
         if (radiusKm <= 0) {
             throw new IllegalArgumentException("Radius must be greater than 0");
         }
+
         return jobRepository.findAll()
                 .stream()
                 .filter(job -> job.getStatus() == JobStatus.PUBLISHED || job.getStatus() == JobStatus.REOPENED)
@@ -126,7 +138,17 @@ public class JobApplicationService {
                         longitude,
                         job.getLocation().getLatitude(),
                         job.getLocation().getLongitude()
-                )<= radiusKm)
+                ) <= radiusKm)
+                .filter(job -> category == null || category.isBlank()
+                        || (job.getCategory() != null && job.getCategory().equalsIgnoreCase(category)))
+                .filter(job -> district == null || district.isBlank()
+                        || (job.getLocation().getDistrict() != null && job.getLocation().getDistrict().equalsIgnoreCase(district)))
+                .filter(job -> minPayment == null
+                        || (job.getPaymentAmount() != null && job.getPaymentAmount().compareTo(minPayment) >= 0))
+                .filter(job -> maxPayment == null
+                        || (job.getPaymentAmount() != null && job.getPaymentAmount().compareTo(maxPayment) <= 0))
+                .filter(job -> scheduledDate == null
+                        || (job.getScheduledStart() != null && job.getScheduledStart().toLocalDate().equals(scheduledDate)))
                 .toList();
     }
     private double calculateDistanceInKm(

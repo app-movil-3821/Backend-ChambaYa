@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v1/jobs")
@@ -42,9 +44,23 @@ public class JobController {
     public List<JobResource> getNearbyJobs(
             @RequestParam double latitude,
             @RequestParam double longitude,
-            @RequestParam double radiusKm
-    ){
-        return jobApplicationService.findNearbyAvailableJobs(latitude,longitude,radiusKm)
+            @RequestParam double radiusKm,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) BigDecimal minPayment,
+            @RequestParam(required = false) BigDecimal maxPayment,
+            @RequestParam(required = false) LocalDate scheduledDate
+    ) {
+        return jobApplicationService.findNearbyAvailableJobs(
+                        latitude,
+                        longitude,
+                        radiusKm,
+                        category,
+                        district,
+                        minPayment,
+                        maxPayment,
+                        scheduledDate
+                )
                 .stream()
                 .map(JobResourceAssembler::toResource)
                 .toList();
