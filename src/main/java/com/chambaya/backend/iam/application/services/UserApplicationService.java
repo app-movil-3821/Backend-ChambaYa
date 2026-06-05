@@ -29,6 +29,8 @@ public class UserApplicationService {
             throw new IllegalArgumentException("Email already in use");
         }
 
+        boolean verified = isInstitutionalEmail(command.email());
+
         Profile profile = new Profile(
                 null,
                 command.skills(),
@@ -59,6 +61,7 @@ public class UserApplicationService {
     public User updateProfile(UpdateProfileCommand command){
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        boolean verified = isInstitutionalEmail(user.getEmail());
         Profile profile = new Profile(
                 command.photoUrl(),
                 command.skills(),
@@ -79,6 +82,17 @@ public class UserApplicationService {
     }
     public List<User> findAll() {
         return userRepository.findAll();
+    }
+
+    private boolean isInstitutionalEmail(String email) {
+        if (email == null) {
+            return false;
+        }
+
+        String normalizedEmail = email.trim().toLowerCase();
+
+        return normalizedEmail.endsWith("@upc.edu.pe")
+                || normalizedEmail.endsWith("@alumno.upc.edu.pe");
     }
 
 }
