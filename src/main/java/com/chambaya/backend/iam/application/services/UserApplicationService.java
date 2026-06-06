@@ -37,7 +37,7 @@ public class UserApplicationService {
                 command.experience(),
                 command.district(),
                 command.phone(),
-                false
+                verified
 
         );
 
@@ -68,7 +68,7 @@ public class UserApplicationService {
                 command.experience(),
                 command.district(),
                 command.phone(),
-                command.verified()
+                verified
         );
         user.updateProfile(profile);
         return userRepository.save(user);
