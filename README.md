@@ -1,178 +1,205 @@
 # Backend ChambaYa
 
-Backend desarrollado para la aplicación móvil **ChambaYa**, una plataforma que conecta MYPEs/contratantes con jóvenes chambeadores para cubrir trabajos temporales o turnos cortos.
+Backend del proyecto **ChambaYa**, una plataforma móvil orientada a conectar contratantes con chambeadores para trabajos temporales o por turnos.
 
-El backend está desarrollado con **Spring Boot**, **Java 21**, **MongoDB** y una arquitectura basada en **Domain-Driven Design (DDD)** mediante Bounded Contexts.
+El backend fue desarrollado con **Java Spring Boot**, siguiendo una estructura organizada por contextos de dominio. Expone una API REST documentada con Swagger y utiliza MongoDB como base de datos.
 
 ---
 
 ## Tecnologías utilizadas
 
-- Java 21
-- Spring Boot
-- Spring Web
-- Spring Data MongoDB
-- Spring Security
-- BCrypt Password Encoder
-- Swagger / OpenAPI
-- Maven
-- MongoDB Compass
+* Java 21
+* Spring Boot
+* Spring Security
+* JWT
+* MongoDB
+* Maven
+* Swagger / OpenAPI
+* Railway / despliegue cloud opcional
 
 ---
 
-## Arquitectura del backend
+## Contextos implementados
 
-El proyecto está organizado por Bounded Contexts:
+### IAM
 
-```txt
-src/main/java/com/chambaya/backend/
-├── iam
-├── jobs
-├── enrollments
-├── reputation
-└── shared
-```
+Gestión de usuarios, autenticación y roles.
 
-Cada contexto sigue una estructura basada en DDD:
+Funcionalidades principales:
 
-```txt
-domain
-application
-infrastructure
-interfaces
-```
+* Registro de usuarios
+* Login con JWT
+* Encriptación de contraseñas con BCrypt
+* Roles: `CHAMBEADOR` y `CONTRATANTE`
+* Verificación automática por correo institucional
+* Protección de endpoints por rol
 
----
-
-## Bounded Contexts implementados
-
-### IAM Context
-
-Gestiona usuarios, roles y perfiles.
-
-Funciones principales:
-
-- Registrar usuarios.
-- Diferenciar roles: `CHAMBEADOR` y `CONTRATANTE`.
-- Guardar contraseña con BCrypt.
-- Consultar usuarios.
-- Actualizar perfil.
-
-Colección MongoDB:
+Regla de verificación:
 
 ```txt
-users
+@upc.edu.pe → verified = true
+@alumno.upc.edu.pe → verified = true
+otros correos → verified = false
 ```
 
 ---
 
-### Jobs Context
+### Jobs
 
-Gestiona los trabajos o turnos publicados por los contratantes.
+Gestión de trabajos publicados por contratantes.
 
-Funciones principales:
+Funcionalidades principales:
 
-- Crear jobs.
-- Listar jobs.
-- Buscar jobs por contratante.
-- Buscar jobs publicados.
-- Cambiar estado del job.
-- Consultar jobs cercanos por coordenadas.
-- Validar que solo un usuario `CONTRATANTE` pueda crear jobs.
+* Crear trabajos
+* Consultar trabajos
+* Buscar trabajos cercanos por ubicación
+* Filtrar por categoría, distrito, pago mínimo, pago máximo y fecha
+* Ciclo de vida del trabajo
 
-Colección MongoDB:
+Flujo principal del estado del trabajo:
 
 ```txt
-jobs
+PUBLISHED → MATCHED → IN_PROGRESS → COMPLETED
 ```
 
 ---
 
-### Enrollments Context
+### Enrollments
 
-Gestiona las postulaciones de chambeadores a jobs.
+Gestión de postulaciones de chambeadores a trabajos.
 
-Funciones principales:
+Funcionalidades principales:
 
-- Postular a un job.
-- Aceptar postulación.
-- Rechazar postulación.
-- Cancelar postulación.
-- Validar que el worker sea `CHAMBEADOR`.
-- Validar que el contractor sea `CONTRATANTE`.
-- Validar que el contractor sea dueño del job.
-- Cambiar el job a `MATCHED` cuando se acepta una postulación.
-- Rechazar automáticamente otras postulaciones pendientes del mismo job.
+* Postular a un trabajo
+* Aceptar postulación
+* Rechazar postulación
+* Cancelar postulación
+* Al aceptar una postulación:
 
-Colección MongoDB:
-
-```txt
-enrollments
-```
-
-> Nota: En el documento del proyecto este contexto aparece como **Application Context**. En la implementación backend se nombró como **Enrollments Context** para evitar confusión con la capa `application` y representar mejor el proceso de postulación.
+    * El job pasa a `MATCHED`
+    * Se rechazan otras postulaciones pendientes
+    * Se genera una notificación
+    * Se crea una conversación entre contratante y chambeador
 
 ---
 
-### Reputation Context
+### Reputation
 
-Gestiona las reseñas y calificaciones entre usuarios.
+Gestión de reseñas y calificaciones.
 
-Funciones principales:
+Funcionalidades principales:
 
-- Crear reviews.
-- Validar rating entre 1 y 5.
-- Consultar reviews por usuario.
-- Consultar reviews por job.
-- Consultar promedio de reputación.
-- Evitar reviews duplicadas para el mismo job y usuarios.
-- Validar que el reviewer y reviewed user existan.
-- Evitar que un usuario se califique a sí mismo.
+* Crear review
+* Consultar reviews por usuario, job o reviewer
+* Obtener resumen de calificación
+* Validar que solo se pueda crear una review cuando el job esté `COMPLETED`
 
-Colección MongoDB:
+---
+
+### Notifications
+
+Gestión de notificaciones internas.
+
+Funcionalidades principales:
+
+* Crear notificaciones automáticas
+* Consultar notificaciones por usuario
+* Consultar notificaciones no leídas
+* Marcar una notificación como leída
+* Marcar todas las notificaciones de un usuario como leídas
+
+Eventos que generan notificaciones:
+
+* Nueva postulación recibida
+* Postulación aceptada
+* Postulación rechazada
+* Postulación cancelada
+
+---
+
+### Communication
+
+Gestión de conversaciones y mensajes.
+
+Funcionalidades principales:
+
+* Crear conversación
+* Crear conversación automáticamente al aceptar una postulación
+* Consultar conversaciones por usuario
+* Consultar mensajes de una conversación
+* Enviar mensajes
+* Cerrar conversación
+
+---
+
+### Payments
+
+Gestión de pagos simulados.
+
+Funcionalidades principales:
+
+* Crear pago para un job completado
+* Confirmar pago
+* Cancelar pago
+* Consultar pagos por job, worker o contractor
+
+Reglas principales:
+
+* Solo se puede crear un pago si el job está `COMPLETED`
+* El pago inicia en estado `PENDING`
+* Un pago confirmado no puede cancelarse
+
+Métodos de pago disponibles:
 
 ```txt
-reviews
+CASH
+YAPE
+PLIN
+BANK_TRANSFER
 ```
 
 ---
 
-## Configuración local
+### Favorites
 
-El proyecto utiliza MongoDB local.
+Gestión de trabajos favoritos para chambeadores.
 
-Archivo de configuración:
+Funcionalidades principales:
 
-```txt
-src/main/resources/application.properties
-```
+* Guardar un job como favorito
+* Consultar favoritos por chambeador
+* Eliminar favorito
+* Evitar duplicados del mismo job para el mismo chambeador
 
-Configuración actual:
+---
+
+## Requisitos para ejecutar el proyecto
+
+Antes de ejecutar el backend, se necesita tener instalado:
+
+* Java 21
+* Maven
+* MongoDB local o una conexión a MongoDB Atlas
+* IntelliJ IDEA o un IDE compatible
+
+---
+
+## Variables de entorno
+
+El backend utiliza variables de entorno para la conexión a la base de datos y configuración de seguridad.
+
+Ejemplo:
 
 ```properties
-spring.application.name=backend
-server.port=8080
-spring.mongodb.uri=mongodb://localhost:27017/chambaya_db
-springdoc.swagger-ui.path=/swagger-ui.html
+MONGODB_URI=mongodb+srv://usuario:password@cluster.mongodb.net/chambaya_db
+JWT_SECRET=clave-secreta-del-token
 ```
 
----
-
-## Requisitos previos
-
-Antes de ejecutar el backend, asegúrate de tener instalado:
-
-- Java 21
-- MongoDB Community Server
-- MongoDB Compass
-- IntelliJ IDEA o IDE compatible
-- Git
-
-El proyecto incluye Maven Wrapper, por lo que no es obligatorio instalar Maven de forma global.
+En entorno local, también puede configurarse desde `application.properties`.
 
 ---
 
-## Ejecutar el proyecto
+## Ejecución local
 
 Desde la raíz del proyecto:
 
@@ -183,300 +210,252 @@ Desde la raíz del proyecto:
 En Windows:
 
 ```bash
-.\mvnw.cmd spring-boot:run
+mvnw.cmd spring-boot:run
 ```
 
-También se puede ejecutar directamente desde IntelliJ IDEA ejecutando la clase principal:
+También se puede ejecutar directamente desde IntelliJ mediante la clase:
 
 ```txt
-BackendApplication.java
-```
-
----
-
-## Ejecutar pruebas de compilación
-
-En Windows:
-
-```bash
-.\mvnw.cmd test
-```
-
-Si todo está correcto, debe aparecer:
-
-```txt
-BUILD SUCCESS
+BackendApplication
 ```
 
 ---
 
 ## Swagger
 
-Una vez levantado el backend, abrir:
+Swagger permite probar todos los endpoints del backend.
+
+URL local:
 
 ```txt
 http://localhost:8080/swagger-ui.html
 ```
 
-Desde Swagger se pueden probar los endpoints del backend.
+Para endpoints protegidos, primero se debe iniciar sesión y luego pegar el token en el botón **Authorize** con el formato:
+
+```txt
+Bearer TOKEN
+```
+
+---
+
+## Autenticación
+
+### Login
+
+```http
+POST /api/v1/auth/login
+```
+
+Request:
+
+```json
+{
+  "email": "usuario@example.com",
+  "password": "123456"
+}
+```
+
+Response:
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1Ni...",
+  "userId": "USER_ID",
+  "name": "Sebastian",
+  "email": "usuario@example.com",
+  "role": "CHAMBEADOR"
+}
+```
+
+El token debe enviarse en los endpoints protegidos:
+
+```txt
+Authorization: Bearer TOKEN
+```
+
+---
+
+## Principales endpoints
+
+### Auth
+
+```http
+POST /api/v1/auth/login
+```
+
+### Users
+
+```http
+POST /api/v1/users
+GET /api/v1/users
+GET /api/v1/users/{id}
+PUT /api/v1/users/{id}/profile
+```
+
+### Jobs
+
+```http
+POST /api/v1/jobs
+GET /api/v1/jobs
+GET /api/v1/jobs/{id}
+GET /api/v1/jobs/published
+GET /api/v1/jobs/contractor/{contractorId}
+GET /api/v1/jobs/nearby
+PUT /api/v1/jobs/{id}/start
+PUT /api/v1/jobs/{id}/complete
+PUT /api/v1/jobs/{id}/cancel
+PUT /api/v1/jobs/{id}/publish
+PUT /api/v1/jobs/{id}/close
+PUT /api/v1/jobs/{id}/reopen
+```
+
+### Enrollments
+
+```http
+POST /api/v1/enrollments
+GET /api/v1/enrollments
+GET /api/v1/enrollments/{id}
+GET /api/v1/enrollments/job/{jobId}
+GET /api/v1/enrollments/worker/{workerId}
+GET /api/v1/enrollments/contractor/{contractorId}
+GET /api/v1/enrollments/pending
+PUT /api/v1/enrollments/{id}/accept
+PUT /api/v1/enrollments/{id}/reject
+PUT /api/v1/enrollments/{id}/cancel
+```
+
+### Reviews
+
+```http
+POST /api/v1/reviews
+GET /api/v1/reviews
+GET /api/v1/reviews/{id}
+GET /api/v1/reviews/job/{jobId}
+GET /api/v1/reviews/reviewer/{reviewerId}
+GET /api/v1/reviews/user/{userId}
+GET /api/v1/reviews/user/{userId}/summary
+```
+
+### Notifications
+
+```http
+GET /api/v1/notifications
+GET /api/v1/notifications/user/{userId}
+GET /api/v1/notifications/user/{userId}/unread
+PUT /api/v1/notifications/{id}/read
+PUT /api/v1/notifications/user/{userId}/read-all
+```
+
+### Communication
+
+```http
+POST /api/v1/communications
+GET /api/v1/communications
+GET /api/v1/communications/{id}
+GET /api/v1/communications/user/{userId}
+GET /api/v1/communications/job/{jobId}
+GET /api/v1/communications/{conversationId}/messages
+POST /api/v1/communications/{conversationId}/messages
+PUT /api/v1/communications/{conversationId}/close
+```
+
+### Payments
+
+```http
+POST /api/v1/payments
+GET /api/v1/payments
+GET /api/v1/payments/{id}
+GET /api/v1/payments/job/{jobId}
+GET /api/v1/payments/worker/{workerId}
+GET /api/v1/payments/contractor/{contractorId}
+PUT /api/v1/payments/{id}/confirm
+PUT /api/v1/payments/{id}/cancel
+```
+
+### Favorites
+
+```http
+POST /api/v1/favorites
+GET /api/v1/favorites
+GET /api/v1/favorites/{id}
+GET /api/v1/favorites/worker/{workerId}
+DELETE /api/v1/favorites/{id}
+```
+
+---
+
+## Integración con aplicación móvil
+
+La guía detallada para conectar el backend con la app móvil se encuentra en:
+
+```txt
+docs/mobile-integration.md
+```
+
+Incluye:
+
+* URL base para emulador Android
+* URL base para navegador local
+* Uso del token JWT
+* Endpoints principales
+* Ejemplos de request y response JSON
+
+Para Android Emulator, la base URL recomendada es:
+
+```txt
+http://10.0.2.2:8080/api/v1/
+```
 
 ---
 
 ## Flujo principal de prueba
 
-### 1. Crear usuario contratante
-
-Endpoint:
+Flujo recomendado para validar el sistema completo:
 
 ```txt
-POST /api/v1/users
-```
-
-Body:
-
-```json
-{
-  "name": "Rosa Mendoza",
-  "email": "rosa.mendoza.negocio@gmail.com",
-  "password": "123456",
-  "role": "CONTRATANTE",
-  "skills": [],
-  "experience": "Dueña de cafetería",
-  "district": "Miraflores",
-  "phone": "987111222"
-}
-```
-
-Copiar el `id` generado como `contractorId`.
-
----
-
-### 2. Crear usuario chambeador
-
-Endpoint:
-
-```txt
-POST /api/v1/users
-```
-
-Body:
-
-```json
-{
-  "name": "Diego Salazar",
-  "email": "diego.salazar.worker@gmail.com",
-  "password": "123456",
-  "role": "CHAMBEADOR",
-  "skills": ["atención al cliente", "limpieza", "rapidez"],
-  "experience": "Apoyo en cafeterías y restaurantes",
-  "district": "Miraflores",
-  "phone": "911222333"
-}
-```
-
-Copiar el `id` generado como `workerId`.
-
----
-
-### 3. Crear job
-
-Endpoint:
-
-```txt
-POST /api/v1/jobs
-```
-
-Body:
-
-```json
-{
-  "contractorId": "ID_DEL_CONTRATANTE",
-  "title": "Apoyo para atención en cafetería",
-  "description": "Se necesita apoyo para atención de clientes y limpieza básica.",
-  "category": "Atención al cliente",
-  "requiredSkills": ["atención al cliente", "limpieza", "rapidez"],
-  "paymentAmount": 60,
-  "latitude": -12.1211,
-  "longitude": -77.0305,
-  "address": "Av. Larco 450",
-  "district": "Miraflores",
-  "scheduledStart": "2026-05-08T16:00:00",
-  "scheduledEnd": "2026-05-08T21:00:00"
-}
-```
-
-Copiar el `id` generado como `jobId`.
-
-El job se crea inicialmente con estado:
-
-```txt
-PUBLISHED
+1. Registrar un CONTRATANTE
+2. Registrar un CHAMBEADOR
+3. Iniciar sesión y obtener JWT
+4. CONTRATANTE crea un job
+5. CHAMBEADOR postula al job
+6. CONTRATANTE acepta la postulación
+7. Se genera notificación y conversación
+8. Job pasa a MATCHED
+9. Job se inicia con start
+10. Job se completa con complete
+11. Se crea review
+12. Se crea payment
+13. Se confirma payment
+14. CHAMBEADOR puede guardar jobs como favoritos
 ```
 
 ---
 
-### 4. Crear postulación
+## Estado del backend
 
-Endpoint:
-
-```txt
-POST /api/v1/enrollments
-```
-
-Body:
-
-```json
-{
-  "jobId": "ID_DEL_JOB",
-  "workerId": "ID_DEL_CHAMBEADOR",
-  "contractorId": "ID_DEL_CONTRATANTE"
-}
-```
-
-La postulación se crea con estado:
+Funcionalidades completadas:
 
 ```txt
-PENDING
+JWT + login real
+Protección por roles
+Ciclo de vida del Job
+Reviews condicionadas a jobs completados
+Notifications Context
+Communication / Chat Context
+Filtros para mapa y trabajos cercanos
+Payment Context simulado
+Favorites Context
+Verificación por correo institucional
+Documentación de integración móvil
 ```
 
----
-
-### 5. Aceptar postulación
-
-Endpoint:
+Pendientes o mejoras futuras:
 
 ```txt
-PUT /api/v1/enrollments/{id}/accept
+Pruebas unitarias e integración más completas
+Integración real con Google OAuth
+Integración real con pasarela de pagos
+Despliegue final en un servicio cloud
+Mejoras de seguridad para producción
 ```
-
-Resultado esperado:
-
-- La postulación aceptada cambia a `ACCEPTED`.
-- El job relacionado cambia a `MATCHED`.
-- Las otras postulaciones pendientes del mismo job cambian a `REJECTED`.
-
----
-
-### 6. Crear review
-
-Endpoint:
-
-```txt
-POST /api/v1/reviews
-```
-
-Body:
-
-```json
-{
-  "jobId": "ID_DEL_JOB",
-  "reviewerId": "ID_DEL_CONTRATANTE",
-  "reviewedUserId": "ID_DEL_CHAMBEADOR",
-  "rating": 5,
-  "comment": "Cumplió correctamente con el turno y tuvo buena actitud."
-}
-```
-
----
-
-### 7. Consultar reputación
-
-Endpoint:
-
-```txt
-GET /api/v1/reviews/user/{userId}/summary
-```
-
-Resultado esperado:
-
-```json
-{
-  "userId": "ID_DEL_USUARIO",
-  "averageRating": 5.0,
-  "totalReviews": 1
-}
-```
-
----
-
-## Endpoint para mapa
-
-El backend permite consultar jobs cercanos usando coordenadas:
-
-```txt
-GET /api/v1/jobs/nearby?latitude=-12.1211&longitude=-77.0305&radiusKm=10
-```
-
-Este endpoint devuelve jobs disponibles cercanos para que la aplicación móvil pueda mostrarlos en un mapa.
-
-Estados considerados disponibles:
-
-```txt
-PUBLISHED
-REOPENED
-```
-
-La lógica actual utiliza las coordenadas almacenadas en cada job y calcula la distancia aproximada entre puntos. La integración con Google Maps API queda como mejora posterior.
-
----
-
-## Manejo de errores
-
-El backend cuenta con un `GlobalExceptionHandler`, que permite devolver errores en formato JSON.
-
-Ejemplo:
-
-```json
-{
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Worker already applied to this job",
-  "path": "/api/v1/enrollments",
-  "timestamp": "2026-05-08T14:30:00"
-}
-```
-
----
-
-## Colecciones en MongoDB
-
-El backend crea las siguientes colecciones:
-
-```txt
-users
-jobs
-enrollments
-reviews
-```
-
-Estas colecciones se crean automáticamente cuando se insertan los primeros documentos.
-
----
-
-## Estado actual del backend
-
-Implementado:
-
-- Proyecto Spring Boot base.
-- MongoDB local.
-- Swagger.
-- Estructura DDD por Bounded Contexts.
-- IAM Context.
-- Jobs Context.
-- Enrollments Context.
-- Reputation Context.
-- Manejo global de errores.
-- Password hashing con BCrypt.
-- Validaciones cruzadas básicas.
-- Flujo principal funcional.
-- Endpoint base para mapa.
-
-Pendiente:
-
-- JWT real.
-- Deploy.
-- MongoDB Atlas.
-- Chat interno.
-- Notificaciones.
-- Payment Context.
-- Integración avanzada con Google Maps API.
