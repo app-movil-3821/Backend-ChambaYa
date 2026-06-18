@@ -6,6 +6,7 @@ import com.chambaya.backend.iam.application.services.UserApplicationService;
 import com.chambaya.backend.iam.domain.model.User;
 import com.chambaya.backend.iam.interfaces.rest.assemblers.UserResourceAssembler;
 import com.chambaya.backend.iam.interfaces.rest.resources.CreateUserResource;
+import com.chambaya.backend.iam.interfaces.rest.resources.ChangePasswordResource;
 import com.chambaya.backend.iam.interfaces.rest.resources.UpdateProfileResource;
 import com.chambaya.backend.iam.interfaces.rest.resources.UserResource;
 import jakarta.validation.Valid;
@@ -66,5 +67,14 @@ public class UserController {
                 UserResourceAssembler.toUpdateProfileCommand(id, resource)
         );
         return UserResourceAssembler.toResource(user);
+    }
+
+    @PutMapping("/{id}/password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            @PathVariable String id,
+            @Valid @RequestBody ChangePasswordResource resource
+    ){
+        userApplicationService.changePassword(id, resource.currentPassword(), resource.newPassword());
     }
 }
