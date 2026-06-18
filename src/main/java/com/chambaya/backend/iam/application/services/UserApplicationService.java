@@ -58,9 +58,24 @@ public class UserApplicationService {
 
     }
 
-    public User updateProfile(UpdateProfileCommand command){
-        User user = userRepository.findById(command.userId())
+    public void changePassword(String userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new IllegalArgumentException("La contraseña actual es incorrecta");
+        }
+
+        if (newPassword.length() < 8) {
+            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
+        }
+
+        user.changePassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
+
+    public User updateProfile(UpdateProfileCommand command){        User user = userRepository.findById(command.userId())
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
         boolean verified = isInstitutionalEmail(user.getEmail());
         Profile profile = new Profile(
                 command.photoUrl(),
