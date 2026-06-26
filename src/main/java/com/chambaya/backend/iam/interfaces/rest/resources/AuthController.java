@@ -4,6 +4,7 @@ import com.chambaya.backend.iam.application.commands.LoginCommand;
 import com.chambaya.backend.iam.application.results.AuthenticatedUserResult;
 import com.chambaya.backend.iam.application.services.AuthApplicationService;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ public class AuthController {
     public AuthController(AuthApplicationService authApplicationService){
         this.authApplicationService = authApplicationService;
     }
+
     @PostMapping("/login")
     public AuthenticatedUserResource login(@Valid @RequestBody LoginResource resource){
         AuthenticatedUserResult result = authApplicationService.login(
@@ -33,5 +35,19 @@ public class AuthController {
                 result.email(),
                 result.role()
         );
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthenticatedUserResource> googleAuth(
+            @Valid @RequestBody GoogleAuthResource resource
+    ) {
+        AuthenticatedUserResult result = authApplicationService.googleAuth(resource.idToken());
+        return ResponseEntity.ok(new AuthenticatedUserResource(
+                result.token(),
+                result.userId(),
+                result.name(),
+                result.email(),
+                result.role()
+        ));
     }
 }

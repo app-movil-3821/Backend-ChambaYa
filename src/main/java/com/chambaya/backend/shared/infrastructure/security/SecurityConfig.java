@@ -31,6 +31,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/google").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/v1/jobs").hasRole("CONTRATANTE")
